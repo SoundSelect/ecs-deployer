@@ -1,21 +1,15 @@
 #!/usr/bin/env bash
 set -e
+source `dirname "$0"`/rcutils.sh
 
-if [ $# -ne 7 ]; then
+if [ $# -ne 1 ]; then
     echo "Create a service for a given environment."
     echo
-    echo "Usage: create-service.sh <service name> <cluster name> <vpc id> <env name> <listener ARN> <dns host> <routing priority>"
+    echo "Usage: create-service.sh <env name>"
     exit 1
 fi
 
-export NAME=$1
-export CLUSTER_NAME=$2
-export VPC=$3
-export DEPLOYMENT_ENV=$4
-export LISTENER_ARN=$5
-export DNS=$6
-export PRI=$7
-
+load_rc
 
 echo "Creating target group..."
 aws elbv2 create-target-group \
@@ -36,7 +30,7 @@ aws elbv2 modify-target-group-attributes \
 echo "Creating listener rule..."
 aws elbv2 create-rule \
 --listener-arn ${LISTENER_ARN} \
---conditions Field=host-header,Values=${DNS} \
+--conditions ${LISTENER_RULE} \
 --priority ${PRI} \
 --actions Type=forward,TargetGroupArn=${ARN}
 
