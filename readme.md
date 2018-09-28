@@ -68,3 +68,38 @@ You may also set env vars by prefixing the var name with env_
 
     env_SPRING_PROFILES_ACTIVE=production
     env_deploy_time=`date`
+
+## Travis and Jenkins Integration
+The deploy script is aware of Travis and Jenkins ENV vars to give it clues on how to automatically deploy.
+This is based off of the deployment schema that I use on all my other projects.
+
+On my team, developers work in feature branches and merge to a branch called "integration" to integrate and test their
+changes with the team. Integration commits/merges are automatically deployed to the integration environment.  Every
+merge requires a version bump in the gradle build file (for Java/Kotlin projects) or the package.json (for node.js).
+I use these versions to tag the docker images and then it's always easy to tell what is in any env, what feature train
+it is on, etc.
+
+A typical travis.yml looks like this:
+
+    language: java
+    sudo: required
+    services:
+      - docker
+    before_cache:
+      - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+      - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+    cache.directories:
+      - $HOME/.gradle/caches/
+      - $HOME/.gradle/wrapper/
+    script:
+      - ./gradlew build
+    after_success:
+      - git clone https://github.com/SoundSelect/ecs-deployer.git
+      - ecs-deployer/bin/deploy.sh -t `egrep '^version = ' build.gradle.kts | sed -e 's/"//g' | cut -d "=" -f 2 | xargs`
+
+
+When the feature is done and ready for QA, it is merged to the master branch. Merges to master are automatically
+deployed ot the staging environment for QA.  When QA certifies the version that's deployed new tags are cut in docker
+and git and they are deployed to production.
+
+And Bob's your uncle.
