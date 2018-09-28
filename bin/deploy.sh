@@ -30,13 +30,13 @@ function help () {
 
 # Parse arguments into variables.
 while getopts ":hvdt:e:" opt; do
-    case ${opt} in
-        h) help ;;
-        v) verbose=1 ;;
-        d) dryrun=1 ;;
-        t) tag=$OPTARG ;;
-        e) environment=$OPTARG ;;
-        \?) echo "Invalid option: -$OPTARG" >&2 && help ;;
+    case $opt in
+    h) help ;;
+    v) verbose=1 ;;
+    d) dryrun=1 ;;
+    t) tag=$OPTARG ;;
+    e) environment=$OPTARG ;;
+    \?) echo "Invalid option: -$OPTARG" >&2 && help ;;
     esac
 done
 [ -z "$tag" ] && echo "tag is a required argument" && help
@@ -55,7 +55,6 @@ if [ -z "${environment}" ]; then
     [ ! -z "$TRAVIS_BRANCH" ] && branch=$TRAVIS_BRANCH
     [ -z "${branch}" ] && echo "Unable to determine branch." && exit 1
     # Deploy to staging if this is on the master branch.
-    # TODO: Externalize this because not everyone does this like me.
     [ ${branch} == "master" ] && environment=staging
     [ ${branch} == "integration" ] && environment=integration
 fi
@@ -72,12 +71,17 @@ if ! [ -x "$(command -v aws)" ]; then
     export PATH=$PATH:$HOME/.local/bin
 fi
 
+# Before we actually do anything, let's make sure there is a service to update.  We will also capture the target group ARN to use later.
+describe_service_cmd="aws --region ${region} ecs describe-services --services "${name}-${environment}" --cluster ${cluster}"
+[ ! -z "$verbose" ] && echo "running command: $describe_service_cmd"
+target_group_arn=`${describe_service_cmd} | grep "targetGroupArn" | cut -d "\"" -f 4 | sed -e 's/"//g' | sed -e 's/,//g' | xargs`
+[ -z ${target_group_arn} ] && echo "The service that you are trying to update does not exist. \
+Before the deployer can automatically update your service, you first create it with the provision.sh script." && exit 1
 # Before we actually do anything, let's make sure there is a service to update.
 # We will also capture the target group ARN to use later.
 service_cmd="aws --region ${region} ecs describe-services --services "${name}-${environment}" --cluster ${cluster}"
 [ ! -z "$verbose" ] && echo "running command: $service_cmd"
-target_group_arn=`${service_cmd} | grep "targetGroupArn" | cut -d "\"" -f 4 \
-| sed -e 's/"//g' | sed -e 's/,//g' | xargs`
+target_group_arn=`${service_cmd} | grep "targetGroupArn" | cut -d "\"" -f 4 | sed -e 's/"//g' -e 's/,//g' | xargs`
 if [ -z ${target_group_arn} ]; then
     echo "The service that you are trying to update does not exist."
     echo "Before the script can automatically update your service,"
@@ -89,22 +93,14 @@ fi
 # We also need to see what listener rule forwards traffic to this target group so we can modify the rule if necessary.
 describe_roles_cmd="aws --region ${region} elbv2 describe-rules --listener-arn ${listener_arn}"
 [ ! -z "$verbose" ] && echo "running command: $describe_roles_cmd"
-rule_arn=`${describe_roles_cmd} \
-| jq ".Rules | to_entries[] | .value | select(.Actions[0].TargetGroupArn == \"${target_group_arn}\") | .RuleArn"`
-if [ -z "$rule_arn" ]; then
-    echo "Could not find the rule to modify in your target"
-    echo "configuration.  Did you delete the load balancer rule?"
-    exit 1
-fi
+rule_arn=`${describe_roles_cmd} | jq ".Rules | to_entries[] | .value | select(.Actions[0].TargetGroupArn == \"${target_group_arn}\") | .RuleArn"`
+[ -z "$rule_arn" ] && echo "Could not find the rule to modify in your target configuration.  Did you delete the load balancer rule?" && exit 1
 [ ! -z "$verbose" ] && echo "rule: $rule_arn"
 
 # Parse ENV_VARS into JSON
 env_vars_parsed=`( set -o posix ; set ) | \
 grep -e 'ENV_' | \
-sed -e 's/^ENV_//g' | \
-sed -e 's/^/{\"name\":\"/g' | \
-sed -e 's/=/\",\"value\":\"/g' | \
-sed -e 's/$/\"}/g' | \
+sed -e 's/^ENV_//g' -e 's/^/{\"name\":\"/g' -e 's/=/\",\"value\":\"/g' -e 's/$/\"}/g' | \
 paste -sd "," -`
 env_vars_parsed="[$env_vars_parsed]"
 
@@ -181,7 +177,7 @@ if  [ -z ${dryrun} ]; then
     --memory ${memory} \
     --container-definitions ${containers} | tee new-task.json
 
-    task_arn=`grep taskDefinitionArn new-task.json | cut -d "\"" -f 4 | sed -e 's/"//g' | sed -e 's/,//g' | xargs`
+    task_arn=`grep taskDefinitionArn new-task.json | cut -d "\"" -f 4 | sed -e 's/"//g' -e 's/,//g' | xargs`
     aws --region ${region} ecs update-service --service "${name}-${environment}" \
     --cluster ${cluster} \
     --task-definition ${task_arn} \

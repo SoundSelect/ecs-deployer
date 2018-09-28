@@ -35,7 +35,7 @@ aws elbv2 create-target-group \
 --health-check-path ${lb_health_path} \
 --target-type "ip" > target-group.json
 
-target_group_arn=`grep TargetGroupArn target-group.json | cut -d "\"" -f 4 | sed -e 's/"//g' | sed -e 's/,//g' | xargs`
+target_group_arn=`grep TargetGroupArn target-group.json | cut -d "\"" -f 4 | sed -e 's/"//g' -e 's/,//g' | xargs`
 echo "Created target group: $target_group_arn"
 
 aws elbv2 modify-target-group-attributes \

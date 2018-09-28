@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-name=artist-service
-region=us-west-2
-repo=309159580642.dkr.ecr.us-west-2.amazonaws.com/artist-service
-lb_health_path=/actuator/health
-container_health_command="wget -qO- localhost:8080/actuator/health"
-iam_role=arn:aws:iam::309159580642:role/ecsTaskExecutionRole

@@ -51,7 +51,7 @@ rc_help() {
 
 load_rc () {
     # Display rc file info and exit if neither a .depllyrc or rc file for the selected environment is found.
-    [ ! -f $PWD/.deployrc ] && [ ! -f $PWD/.deployrc.${environment} ] && rc_help && exit 2
+    [ ! -f $PWD/.deployrc ] && [ ! -f $PWD/.deployrc.${environment} ] && rc_help "unable to find rc files" && exit 2
 
     # Run the .deployrc and then overwrite it with the environment-specific one (if exists)
     [ -f $PWD/.deployrc ] && source ${PWD}/.deployrc
