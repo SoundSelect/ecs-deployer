@@ -16,17 +16,11 @@ function help () {
 
 # Parse arguments into variables.
 while getopts ":he:" opt; do
-  case $opt in
-    h)
-      help
-      ;;
-    e)
-      environment=$OPTARG
-      ;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2 && help
-      ;;
-  esac
+    case ${opt} in
+        h) help ;;
+        e) environment=$OPTARG ;;
+        \?) echo "Invalid option: -$OPTARG" >&2 && help ;;
+    esac
 done
 [ -z "$environment" ] && echo "environment is a required argument" && help
 
@@ -66,5 +60,6 @@ aws ecs create-service \
 --load-balancers targetGroupArn=${target_group_arn},containerName=${name},containerPort=${port} \
 --desired-count ${task_count} \
 --launch-type EC2 \
---network-configuration "awsvpcConfiguration={subnets=[$subnets],securityGroups=[$security_groups],assignPublicIp=DISABLED}" \
+--network-configuration \
+"awsvpcConfiguration={subnets=[$subnets],securityGroups=[$security_groups],assignPublicIp=DISABLED}" \
 --scheduling-strategy REPLICA

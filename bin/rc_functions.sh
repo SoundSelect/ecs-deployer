@@ -3,12 +3,20 @@
 rc_help() {
     echo $1
     echo
-    echo "This script requires a .deployrc configuration file. This file should be placed in the directory which the script is run. This is typically the root of your project beside your .travis.yml or Jenkinsfile."
-    echo "You may also specify environment-specific parameters in their own .deployrc.env_name files.  For example you can create a .deployrc.prod and its values will override the main one when deploying to a environment named prod."
+    echo "This script requires a .deployrc configuration file. This"
+    echo "file should be placed in the directory which the script is"
+    echo "run. This is typically the root of your project beside your"
+    echo ".travis.yml or Jenkinsfile."
+    echo "You may also specify environment-specific parameters in"
+    echo "their own .deployrc.env_name files. For example you can"
+    echo "create a .deployrc.prod and its values will override the"
+    echo "main one when deploying to a environment named prod."
     echo
-    echo "It is important note that the name, region, and cluster can not be changed once the service is created."
+    echo "It is important note that the name, region, and cluster can"
+    echo "not be changed once the service is created."
     echo
-    echo "The following parameters must be contained either in the .deployrc file or the environment-specific rc file:"
+    echo "The following parameters must be contained either in the"
+    echo ".deployrc file or the environment-specific rc file:"
     echo
     echo "name=my-service"
     echo "region=us-west-2"

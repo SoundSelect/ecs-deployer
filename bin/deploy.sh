@@ -18,7 +18,8 @@ function help () {
     echo
     echo "Examples:"
     echo
-    echo "# Automatically determine the target environment from the branch and deploy the \"latest\" tag."
+    echo "# Automatically determine the target environment from the"
+    echo "# branch and deploy the \"latest\" tag."
     echo "ecs-deployer/bin/deploy.sh -t latest"
     echo
     echo "# Dry run with verbose output for the 1.3.4 tag."
@@ -29,26 +30,14 @@ function help () {
 
 # Parse arguments into variables.
 while getopts ":hvdt:e:" opt; do
-  case $opt in
-    h)
-      help
-      ;;
-    v)
-      verbose=1
-      ;;
-    d)
-      dryrun=1
-      ;;
-    t)
-      tag=$OPTARG
-      ;;
-    e)
-      environment=$OPTARG
-      ;;
-    \?)
-      echo "Invalid option: -$OPTARG" >&2 && help
-      ;;
-  esac
+    case ${opt} in
+        h) help ;;
+        v) verbose=1 ;;
+        d) dryrun=1 ;;
+        t) tag=$OPTARG ;;
+        e) environment=$OPTARG ;;
+        \?) echo "Invalid option: -$OPTARG" >&2 && help ;;
+    esac
 done
 [ -z "$tag" ] && echo "tag is a required argument" && help
 
@@ -66,6 +55,7 @@ if [ -z "${environment}" ]; then
     [ ! -z "$TRAVIS_BRANCH" ] && branch=$TRAVIS_BRANCH
     [ -z "${branch}" ] && echo "Unable to determine branch." && exit 1
     # Deploy to staging if this is on the master branch.
+    # TODO: Externalize this because not everyone does this like me.
     [ ${branch} == "master" ] && environment=staging
     [ ${branch} == "integration" ] && environment=integration
 fi
@@ -82,19 +72,30 @@ if ! [ -x "$(command -v aws)" ]; then
     export PATH=$PATH:$HOME/.local/bin
 fi
 
-# Before we actually do anything, let's make sure there is a service to update.  We will also capture the target group ARN to use later.
-describe_service_cmd="aws --region ${region} ecs describe-services --services "${name}-${environment}" --cluster ${cluster}"
-[ ! -z "$verbose" ] && echo "running command: $describe_service_cmd"
-target_group_arn=`${describe_service_cmd} | grep "targetGroupArn" | cut -d "\"" -f 4 | sed -e 's/"//g' | sed -e 's/,//g' | xargs`
-[ -z ${target_group_arn} ] && echo "The service that you are trying to update does not exist. \
-Before the deployer can automatically update your service, you first create it with the provision.sh script." && exit 1
+# Before we actually do anything, let's make sure there is a service to update.
+# We will also capture the target group ARN to use later.
+service_cmd="aws --region ${region} ecs describe-services --services "${name}-${environment}" --cluster ${cluster}"
+[ ! -z "$verbose" ] && echo "running command: $service_cmd"
+target_group_arn=`${service_cmd} | grep "targetGroupArn" | cut -d "\"" -f 4 \
+| sed -e 's/"//g' | sed -e 's/,//g' | xargs`
+if [ -z ${target_group_arn} ]; then
+    echo "The service that you are trying to update does not exist."
+    echo "Before the script can automatically update your service,"
+    echo "you must first create it with the provision.sh script."
+    exit 1
+fi
 [ ! -z "$verbose" ] && echo "target group: $target_group_arn"
 
 # We also need to see what listener rule forwards traffic to this target group so we can modify the rule if necessary.
 describe_roles_cmd="aws --region ${region} elbv2 describe-rules --listener-arn ${listener_arn}"
 [ ! -z "$verbose" ] && echo "running command: $describe_roles_cmd"
-rule_arn=`${describe_roles_cmd} | jq ".Rules | to_entries[] | .value | select(.Actions[0].TargetGroupArn == \"${target_group_arn}\") | .RuleArn"`
-[ -z "$rule_arn" ] && echo "Could not find the rule to modify in your target configuration.  Did you delete the load balancer rule?" && exit 1
+rule_arn=`${describe_roles_cmd} \
+| jq ".Rules | to_entries[] | .value | select(.Actions[0].TargetGroupArn == \"${target_group_arn}\") | .RuleArn"`
+if [ -z "$rule_arn" ]; then
+    echo "Could not find the rule to modify in your target"
+    echo "configuration.  Did you delete the load balancer rule?"
+    exit 1
+fi
 [ ! -z "$verbose" ] && echo "rule: $rule_arn"
 
 # Parse ENV_VARS into JSON
@@ -150,7 +151,7 @@ if  [ -z ${dryrun} ]; then
     if [ ${branch} == "master" ]  || [ ${branch} == "integration" ]; then
         # This is how we login to ECR.  The script returns a set of env vars that are set by evaluating the response.
         eval $(aws ecr get-login --no-include-email --region ${region})
-        docker build -t ${image_name} .
+        docker build -t ${name} .
         echo "Built docker image for tag $tag"
         echo "Pushing ${name}"':latest'
         docker tag ${name}:latest ${repo}':latest'
@@ -186,7 +187,8 @@ if  [ -z ${dryrun} ]; then
     --task-definition ${task_arn} \
     --desired-count ${task_count} \
     --health-check-grace-period-seconds ${lb_health_grace_period} \
-    --network-configuration "awsvpcConfiguration={subnets=[$subnets],securityGroups=[$security_groups],assignPublicIp=DISABLED}" \
+    --network-configuration \
+    "awsvpcConfiguration={\subnets=[$subnets],securityGroups=[$security_groups],assignPublicIp=DISABLED}" \
     --deployment-configuration maximumPercent=200,minimumHealthyPercent=100 \
     --force-new-deployment
 fi
