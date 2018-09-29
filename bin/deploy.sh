@@ -176,8 +176,13 @@ if  [ -z ${dryrun} ]; then
     --cpu ${cpu} \
     --memory ${memory} \
     --container-definitions ${containers} | tee new-task.json
+    [ ! -z "$verbose" ] && echo "new task:"
+    [ ! -z "$verbose" ] && cat new-task.json
 
     task_arn=`grep taskDefinitionArn new-task.json | cut -d "\"" -f 4 | sed -e 's/"//g' -e 's/,//g' | xargs`
+    [ ! -z "$verbose" ] && echo "extracted arn:"
+    [ ! -z "$verbose" ] && echo $task_arn
+
     aws --region ${region} ecs update-service --service "${name}-${environment}" \
     --cluster ${cluster} \
     --task-definition ${task_arn} \
