@@ -111,6 +111,7 @@ container_health_check="{\
       \"retries\": $container_health_retries,\
       \"startPeriod\": $container_health_start_period\
     }"
+[ ! -z "$verbose" ] && echo "container_health_check: $container_health_check"
 
 containers="[\
     {\
@@ -138,7 +139,7 @@ containers="[\
       \"name\": \"${name}-${environment}\"\
     }\
   ]"
-[ ! -z "$verbose" ] && echo ${containers}
+[ ! -z "$verbose" ] && echo "containers:" && echo ${containers}
 
 # If this isn't a dry run do all the real work.
 if  [ -z ${dryrun} ]; then
