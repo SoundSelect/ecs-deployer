@@ -93,7 +93,7 @@ fi
 # We also need to see what listener rule forwards traffic to this target group so we can modify the rule if necessary.
 describe_roles_cmd="aws --region ${region} elbv2 describe-rules --listener-arn ${listener_arn}"
 [ ! -z "$verbose" ] && echo "running command: $describe_roles_cmd"
-rule_arn=`${describe_roles_cmd} | jq ".Rules | to_entries[] | .value | select(.Actions[0].TargetGroupArn == \"${target_group_arn}\") | .RuleArn"`
+rule_arn=`${describe_roles_cmd} | jq ".Rules | to_entries[] | .value | select(.Actions[0].TargetGroupArn == \"${target_group_arn}\") | .RuleArn" | sed -e 's/"//g'`
 [ -z "$rule_arn" ] && echo "Could not find the rule to modify in your target configuration.  Did you delete the load balancer rule?" && exit 1
 [ ! -z "$verbose" ] && echo "rule: $rule_arn"
 
