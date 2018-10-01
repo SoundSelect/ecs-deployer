@@ -127,13 +127,13 @@ if  [ -z ${dryrun} ]; then
     --health-check-port ${port} \
     --health-check-path ${lb_health_path}"
     [ ! -z "$verbose" ] && echo "running command: $modify_target_cmd"
-    eval ${modify_target_cmd}
+    ${modify_target_cmd}
 
     modify_rule_cmd="aws --region ${region} elbv2 modify-rule \
     --rule-arn ${rule_arn} \
     --conditions ${listener_rule}"
     [ ! -z "$verbose" ] && echo "running command: $modify_rule_cmd"
-    eval ${modify_rule_cmd}
+    ${modify_rule_cmd}
 
     register_task_cmd="aws --region ${region} ecs register-task-definition \
     --family ${name}-${environment} \
@@ -178,11 +178,7 @@ if  [ -z ${dryrun} ]; then
     ]\""
 
     [ ! -z "$verbose" ] && echo "running command: $register_task_cmd"
-    eval ${register_task_cmd} | tee new-task.json
-
-    [ ! -z "$verbose" ] && echo "new task:" && cat new-task.json
-
-    task_arn=`grep taskDefinitionArn new-task.json | cut -d "\"" -f 4 | sed -e 's/"//g' -e 's/,//g' | xargs`
+    task_arn=`${register_task_cmd} | jq ".taskDefinition.taskDefinitionArn" | sed -e 's/"//g'`
     [ ! -z "$verbose" ] && echo "extracted arn:" && echo ${task_arn}
 
     update_service_cmd="aws --region ${region} ecs update-service --service "${name}-${environment}" \
@@ -195,6 +191,6 @@ if  [ -z ${dryrun} ]; then
     --deployment-configuration maximumPercent=200,minimumHealthyPercent=100 \
     --force-new-deployment"
     [ ! -z "$verbose" ] && echo "running command: $update_service_cmd"
-    eval ${update_service_cmd}
+    ${update_service_cmd}
 
 fi
