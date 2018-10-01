@@ -99,47 +99,10 @@ rule_arn=`${describe_roles_cmd} | jq ".Rules | to_entries[] | .value | select(.A
 
 # Parse ENV_VARS into JSON
 env_vars_parsed=`( set -o posix ; set ) | \
-grep -e 'ENV_' | \
-sed -e 's/^ENV_//g' -e 's/^/{\"name\":\"/g' -e 's/=/\",\"value\":\"/g' -e 's/$/\"}/g' | \
+grep -e 'env_' | \
+sed -e 's/^env_//g' -e 's/^/{\\\"name\\\":\\\"/g' -e 's/=/\\\",\\\"value\\\":\\\"/g' -e 's/$/\\\"}/g' | \
 paste -sd "," -`
 env_vars_parsed="[$env_vars_parsed]"
-
-container_health_check="{\
-      \"command\": [\"CMD-SHELL\", \"$container_health_command\"],\
-      \"interval\": $container_health_interval,\
-      \"timeout\": $container_health_timeout,\
-      \"retries\": $container_health_retries,\
-      \"startPeriod\": $container_health_start_period\
-    }"
-[ ! -z "$verbose" ] && echo "container_health_check: $container_health_check"
-
-containers="[\
-    {\
-      \"logConfiguration\": {\
-        \"logDriver\": \"awslogs\",\
-        \"options\": {\
-          \"awslogs-group\": \"/ecs/${name}-${environment}\",\
-          \"awslogs-region\": \"${region}\",\
-          \"awslogs-stream-prefix\": \"ecs\"\
-        }\
-      },\
-      \"portMappings\": [\
-        {\
-          \"hostPort\": $port,\
-          \"protocol\": \"tcp\",\
-          \"containerPort\": $port\
-        }\
-      ],\
-      \"cpu\": \"${cpu}\",\
-      \"environment\": ${env_vars_parsed},\
-      \"memoryReservation\": \"${memory}\",\
-      \"image\": \"${repo}:${tag}\",\
-      \"healthCheck\": $container_health_check,\
-      \"essential\": true,\
-      \"name\": \"${name}-${environment}\"\
-    }\
-  ]"
-[ ! -z "$verbose" ] && echo "containers:" && echo ${containers}
 
 # If this isn't a dry run do all the real work.
 if  [ -z ${dryrun} ]; then
@@ -159,16 +122,20 @@ if  [ -z ${dryrun} ]; then
         echo "Pushed ${name}"':'"$tag"
     fi
 
-    aws --region ${region} elbv2 modify-target-group \
+    modify_target_cmd="aws --region ${region} elbv2 modify-target-group \
     --target-group-arn ${target_group_arn} \
     --health-check-port ${port} \
-    --health-check-path ${lb_health_path}
+    --health-check-path ${lb_health_path}"
+    [ ! -z "$verbose" ] && echo "running command: $modify_target_cmd"
+    eval ${modify_target_cmd}
 
-    aws --region ${region} elbv2 modify-rule \
+    modify_rule_cmd="aws --region ${region} elbv2 modify-rule \
     --rule-arn ${rule_arn} \
-    --conditions ${listener_rule}
+    --conditions ${listener_rule}"
+    [ ! -z "$verbose" ] && echo "running command: $modify_rule_cmd"
+    eval ${modify_rule_cmd}
 
-    aws --region ${region} ecs register-task-definition \
+    register_task_cmd="aws --region ${region} ecs register-task-definition \
     --family ${name}-${environment} \
     --task-role-arn ${iam_role} \
     --execution-role-arn ${iam_role} \
@@ -176,19 +143,58 @@ if  [ -z ${dryrun} ]; then
     --requires-compatibilities "EC2" \
     --cpu ${cpu} \
     --memory ${memory} \
-    --container-definitions ${containers} | tee new-task.json
+    --container-definitions \
+    \"[\
+        {\
+          \\\"logConfiguration\\\": {\
+            \\\"logDriver\\\": \\\"awslogs\\\",\
+            \\\"options\\\": {\
+              \\\"awslogs-group\\\": \\\"/ecs/${name}-${environment}\\\",\
+              \\\"awslogs-region\\\": \\\"${region}\\\",\
+              \\\"awslogs-stream-prefix\\\": \\\"ecs\\\"\
+            }\
+          },\
+          \\\"portMappings\\\": [\
+            {\
+              \\\"hostPort\\\": $port,\
+              \\\"protocol\\\": \\\"tcp\\\",\
+              \\\"containerPort\\\": $port\
+            }\
+          ],\
+          \\\"cpu\\\": ${cpu},\
+          \\\"environment\\\": ${env_vars_parsed},\
+          \\\"memoryReservation\\\": ${memory},\
+          \\\"image\\\": \\\"${repo}:${tag}\\\",\
+          \\\"healthCheck\\\": {\
+              \\\"command\\\": [\\\"CMD-SHELL\\\", \\\"$container_health_command\\\"],\
+              \\\"interval\\\": $container_health_interval,\
+              \\\"timeout\\\": $container_health_timeout,\
+              \\\"retries\\\": $container_health_retries,\
+              \\\"startPeriod\\\": $container_health_start_period\
+          },\
+          \\\"essential\\\": true,\
+          \\\"name\\\": \\\"${name}-${environment}\\\"\
+        }\
+    ]\""
+
+    [ ! -z "$verbose" ] && echo "running command: $register_task_cmd"
+    eval ${register_task_cmd} | tee new-task.json
+
     [ ! -z "$verbose" ] && echo "new task:" && cat new-task.json
 
     task_arn=`grep taskDefinitionArn new-task.json | cut -d "\"" -f 4 | sed -e 's/"//g' -e 's/,//g' | xargs`
-    [ ! -z "$verbose" ] && echo "extracted arn:" && echo $task_arn
+    [ ! -z "$verbose" ] && echo "extracted arn:" && echo ${task_arn}
 
-    aws --region ${region} ecs update-service --service "${name}-${environment}" \
+    update_service_cmd="aws --region ${region} ecs update-service --service "${name}-${environment}" \
     --cluster ${cluster} \
     --task-definition ${task_arn} \
     --desired-count ${task_count} \
     --health-check-grace-period-seconds ${lb_health_grace_period} \
     --network-configuration \
-    "awsvpcConfiguration={\subnets=[$subnets],securityGroups=[$security_groups],assignPublicIp=DISABLED}" \
+    \"awsvpcConfiguration={subnets=[$subnets],securityGroups=[$security_groups],assignPublicIp=DISABLED}\" \
     --deployment-configuration maximumPercent=200,minimumHealthyPercent=100 \
-    --force-new-deployment
+    --force-new-deployment"
+    [ ! -z "$verbose" ] && echo "running command: $update_service_cmd"
+    eval ${update_service_cmd}
+
 fi
