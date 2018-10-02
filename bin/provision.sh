@@ -29,7 +29,7 @@ load_rc
 echo "Creating target group..."
 aws elbv2 create-target-group \
 --name ${name} \
---protocol http \
+--protocol HTTP \
 --port ${port} \
 --vpc-id ${vpc_id} \
 --health-check-path ${lb_health_path} \
