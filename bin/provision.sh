@@ -28,7 +28,7 @@ load_rc
 
 echo "Creating target group..."
 aws elbv2 create-target-group \
---name ${name} \
+--name ${name}-${environment} \
 --protocol HTTP \
 --port ${port} \
 --vpc-id ${vpc_id} \
@@ -50,14 +50,49 @@ aws elbv2 create-rule \
 --actions Type=forward,TargetGroupArn=${target_group_arn}
 
 echo "Creating log group..."
-aws logs create-log-group --log-group-name /ecs/${name}
+aws logs create-log-group --log-group-name /ecs/${name}-${environment}
+
+echo "Creating Task Definition with temporary httpd image"
+
+task_arn=`aws --region ${region} ecs register-task-definition \
+--family ${name}-${environment} \
+--task-role-arn ${iam_role} \
+--execution-role-arn ${iam_role} \
+--network-mode awsvpc \
+--requires-compatibilities "EC2" \
+--cpu ${cpu} \
+--memory ${memory} \
+--container-definitions "[\
+    {\
+      \"logConfiguration\": {\
+        \"logDriver\": \"awslogs\",\
+        \"options\": {\
+          \"awslogs-group\": \"/ecs/${name}-${environment}\",\
+          \"awslogs-region\": \"${region}\",\
+          \"awslogs-stream-prefix\": \"ecs\"\
+        }\
+      },\
+      \"portMappings\": [\
+        {\
+          \"hostPort\": $port,\
+          \"protocol\": \"tcp\",\
+          \"containerPort\": $port\
+        }\
+      ],\
+      \"cpu\": ${cpu},\
+      \"memoryReservation\": ${memory},\
+      \"image\": \"httpd:2.4\",\
+      \"name\": \"${name}-${environment}\"\
+    }\
+]" | jq ".taskDefinition.taskDefinitionArn" | sed -e 's/"//g'`
+echo "extracted arn:" && echo ${task_arn}
 
 echo "Creating ECS service..."
 aws ecs create-service \
 --cluster ${cluster} \
---service-name ${name} \
---task-definition ${name} \
---load-balancers targetGroupArn=${target_group_arn},containerName=${name},containerPort=${port} \
+--service-name ${name}-${environment} \
+--task-definition ${task_arn} \
+--load-balancers targetGroupArn=${target_group_arn},containerName=${name}-${environment},containerPort=${port} \
 --desired-count ${task_count} \
 --launch-type EC2 \
 --network-configuration \
