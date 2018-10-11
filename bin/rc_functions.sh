@@ -43,6 +43,7 @@ rc_help() {
     echo "container_health_timeout=5"
     echo "container_health_retries=5"
     echo "container_health_start_period=90"
+    echo "dockerfile_path=\".\""
     echo
     echo "You may also set env vars by prefixing the var name with env_"
     echo "env_SPRING_PROFILES_ACTIVE=production"
@@ -82,4 +83,5 @@ load_rc () {
     [ -z "$container_health_timeout" ] && container_health_timeout=5
     [ -z "$container_health_retries" ] && container_health_retries=5
     [ -z "$container_health_start_period" ] && container_health_start_period=90
+    [ -z "$dockerfile_path" ] && dockerfile_path="."
 }

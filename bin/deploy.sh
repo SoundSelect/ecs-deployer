@@ -111,7 +111,7 @@ if  [ -z ${dryrun} ]; then
     if [ ${branch} == "master" ]  || [ ${branch} == "integration" ]; then
         # This is how we login to ECR.  The script returns a set of env vars that are set by evaluating the response.
         eval $(aws ecr get-login --no-include-email --region ${region})
-        docker build -t ${name} .
+        docker build -t ${name} ${dockerfile_path}
         echo "Built docker image for tag $tag"
         echo "Pushing ${name}"':latest'
         docker tag ${name}:latest ${repo}':latest'
