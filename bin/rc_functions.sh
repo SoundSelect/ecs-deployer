@@ -36,7 +36,7 @@ rc_help() {
     echo "memory=2048"
     echo "port=8080"
     echo "task_count=2"
-    echo "lb_health_start_period=120"
+    echo "lb_health_start_period=300"
     echo "lb_health_path=/"
     echo "container_health_command=\"true\""
     echo "container_health_interval=10"
@@ -77,7 +77,7 @@ load_rc () {
     [ -z "$port" ] && port=8080
     [ -z "$task_count" ] && task_count=2
     [ -z "$lb_health_path" ] && lb_health_path="/"
-    [ -z "$lb_health_grace_period" ] && lb_health_grace_period=120
+    [ -z "$lb_health_grace_period" ] && lb_health_grace_period=300
     [ -z "$container_health_command" ] && container_health_command="true"
     [ -z "$container_health_interval" ] && container_health_interval=10
     [ -z "$container_health_timeout" ] && container_health_timeout=5

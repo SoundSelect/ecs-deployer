@@ -50,7 +50,7 @@ aws elbv2 create-rule \
 --actions Type=forward,TargetGroupArn=${target_group_arn}
 
 echo "Creating log group..."
-aws logs create-log-group --log-group-name /ecs/${name}-${environment}
+aws logs create-log-group --log-group-name /ecs/${name}-${environment} || true
 
 echo "Creating Task Definition with temporary httpd image"
 
