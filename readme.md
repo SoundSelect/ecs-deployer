@@ -94,7 +94,7 @@ A typical travis.yml looks like this:
     script:
       - ./gradlew build
     after_success:
-      - git clone https://github.com/SoundSelect/ecs-deployer.git
+      - git clone https://github.com/advantageous/ecs-deployer.git
       - ecs-deployer/bin/deploy.sh -t `egrep '^version = ' build.gradle.kts | sed -e 's/"//g' | cut -d "=" -f 2 | xargs`
 
 
