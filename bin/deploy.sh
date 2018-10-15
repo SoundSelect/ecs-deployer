@@ -124,7 +124,6 @@ if  [ -z ${dryrun} ]; then
 
     modify_target_cmd="aws --region ${region} elbv2 modify-target-group \
     --target-group-arn ${target_group_arn} \
-    --health-check-port ${port} \
     --health-check-path ${lb_health_path}"
     [ ! -z "$verbose" ] && echo "running command: $modify_target_cmd"
     eval ${modify_target_cmd}
@@ -139,7 +138,7 @@ if  [ -z ${dryrun} ]; then
     --family ${name}-${environment} \
     --task-role-arn ${iam_role} \
     --execution-role-arn ${iam_role} \
-    --network-mode awsvpc \
+    --network-mode bridge \
     --requires-compatibilities "EC2" \
     --cpu ${cpu} \
     --memory ${memory} \
@@ -156,7 +155,6 @@ if  [ -z ${dryrun} ]; then
           },\
           \\\"portMappings\\\": [\
             {\
-              \\\"hostPort\\\": $port,\
               \\\"protocol\\\": \\\"tcp\\\",\
               \\\"containerPort\\\": $port\
             }\
@@ -186,8 +184,6 @@ if  [ -z ${dryrun} ]; then
     --task-definition ${task_arn} \
     --desired-count ${task_count} \
     --health-check-grace-period-seconds ${lb_health_grace_period} \
-    --network-configuration \
-    \"awsvpcConfiguration={subnets=[$subnets],securityGroups=[$security_groups],assignPublicIp=DISABLED}\" \
     --deployment-configuration maximumPercent=200,minimumHealthyPercent=100 \
     --force-new-deployment"
     [ ! -z "$verbose" ] && echo "running command: $update_service_cmd"

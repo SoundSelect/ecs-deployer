@@ -33,7 +33,7 @@ aws elbv2 create-target-group \
 --port ${port} \
 --vpc-id ${vpc_id} \
 --health-check-path ${lb_health_path} \
---target-type "ip" > target-group.json
+--target-type "instance" > target-group.json
 
 target_group_arn=`grep TargetGroupArn target-group.json | cut -d "\"" -f 4 | sed -e 's/"//g' -e 's/,//g' | xargs`
 echo "Created target group: $target_group_arn"
@@ -58,7 +58,7 @@ task_arn=`aws --region ${region} ecs register-task-definition \
 --family ${name}-${environment} \
 --task-role-arn ${iam_role} \
 --execution-role-arn ${iam_role} \
---network-mode awsvpc \
+--network-mode bridge \
 --requires-compatibilities "EC2" \
 --cpu ${cpu} \
 --memory ${memory} \
@@ -74,7 +74,6 @@ task_arn=`aws --region ${region} ecs register-task-definition \
       },\
       \"portMappings\": [\
         {\
-          \"hostPort\": $port,\
           \"protocol\": \"tcp\",\
           \"containerPort\": $port\
         }\
@@ -95,6 +94,4 @@ aws ecs create-service \
 --load-balancers targetGroupArn=${target_group_arn},containerName=${name}-${environment},containerPort=${port} \
 --desired-count ${task_count} \
 --launch-type EC2 \
---network-configuration \
-"awsvpcConfiguration={subnets=[$subnets],securityGroups=[$security_groups],assignPublicIp=DISABLED}" \
 --scheduling-strategy REPLICA
