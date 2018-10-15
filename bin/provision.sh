@@ -51,6 +51,7 @@ aws elbv2 create-rule \
 
 echo "Creating log group..."
 aws logs create-log-group --log-group-name /ecs/${name}-${environment} || true
+aws logs put-retention-policy --log-group-name /ecs/${name}-${environment} --retention-in-days ${log_retention_days}
 
 echo "Creating Task Definition with temporary httpd image"
 

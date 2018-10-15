@@ -63,6 +63,8 @@ The following parameters are optional and will default to these values:
     container_health_timeout=5
     container_health_retries=5
     container_health_start_period=90
+    dockerfile_path="."
+    log_retention_days=7
 
 You may also set env vars by prefixing the var name with env_
 
