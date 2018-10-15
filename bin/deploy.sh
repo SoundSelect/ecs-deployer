@@ -47,17 +47,15 @@ if [ "$TRAVIS_PULL_REQUEST" == "true" ] || [ -z "CHANGE_ID" ]; then
     exit 0
 fi
 
+# If using Jenkins
+[ ! -z "$BRANCH_NAME" ] && branch=$BRANCH_NAME
+# If using Travis
+[ ! -z "$TRAVIS_BRANCH" ] && branch=$TRAVIS_BRANCH
 # If the environment wasn't passed, determine it from the branch.
 if [ -z "${environment}" ]; then
-    # If using Jenkins
-    [ ! -z "$BRANCH_NAME" ] && branch=$BRANCH_NAME
-    # If using Travis
-    [ ! -z "$TRAVIS_BRANCH" ] && branch=$TRAVIS_BRANCH
     [ -z "${branch}" ] && echo "Unable to determine branch." && exit 1
-    # Deploy to staging if this is on the master branch.
     [ ${branch} == "master" ] && environment=staging
     [ ${branch} == "integration" ] && environment=integration
-    build_server=true
 fi
 [ -z "environment" ] && echo "Could not determine deployment environment." && exit 1
 
