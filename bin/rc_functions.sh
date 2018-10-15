@@ -84,4 +84,6 @@ load_rc () {
     [ -z "$container_health_retries" ] && container_health_retries=5
     [ -z "$container_health_start_period" ] && container_health_start_period=90
     [ -z "$dockerfile_path" ] && dockerfile_path="."
+    true
+
 }

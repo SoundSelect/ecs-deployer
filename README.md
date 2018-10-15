@@ -48,7 +48,7 @@ The following parameters must be contained either in the .deployrc file or the e
     vpc_id=vpc-6b8ac90d
     listener_rule="Field=host-header,Values=myservice.mydomain.com"
     listener_rule_priority=10
-    listener_arn=arn:aws:elasticloadbalancing:us-west-2:309159580642:listener/app/int-rbcm/cbb0779036bb392e/fa1d65163f86dc2e
+    listener_arn=arn:aws:elasticloadbalancing:us-west-2:123456789012:listener/app/int-rbcm/cbb0779036bb392e/fa1d65163f86dc2e
 
 The following parameters are optional and will default to these values:
 
@@ -94,7 +94,7 @@ A typical travis.yml looks like this:
     script:
       - ./gradlew build
     after_success:
-      - git clone https://github.com/SoundSelect/ecs-deployer.git
+      - git clone https://github.com/advantageous/ecs-deployer.git
       - ecs-deployer/bin/deploy.sh -t `egrep '^version = ' build.gradle.kts | sed -e 's/"//g' | cut -d "=" -f 2 | xargs`
 
 
