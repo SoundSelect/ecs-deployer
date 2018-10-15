@@ -57,6 +57,7 @@ if [ -z "${environment}" ]; then
     # Deploy to staging if this is on the master branch.
     [ ${branch} == "master" ] && environment=staging
     [ ${branch} == "integration" ] && environment=integration
+    build_server=true
 fi
 [ -z "environment" ] && echo "Could not determine deployment environment." && exit 1
 
@@ -107,8 +108,8 @@ env_vars_parsed="[$env_vars_parsed]"
 # If this isn't a dry run do all the real work.
 if  [ -z ${dryrun} ]; then
 
-    # Build and push the docker image if we are on integration or master branch.
-    if [ ${branch} == "master" ]  || [ ${branch} == "integration" ]; then
+    # Build and push the docker image if we are on a build server and on integration or master branch.
+    if [ ! -z "${build_server}" ] && [ ${branch} == "master" ]  || [ ${branch} == "integration" ] ; then
         # This is how we login to ECR.  The script returns a set of env vars that are set by evaluating the response.
         eval $(aws ecr get-login --no-include-email --region ${region})
         docker build -t ${name} ${dockerfile_path}
